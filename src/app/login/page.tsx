@@ -12,6 +12,12 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const router = useRouter();
 
+  // Check if Supabase is configured
+  const isSupabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
+                               process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+                               !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder') &&
+                               !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes('placeholder');
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -39,6 +45,36 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+        <div className="card shadow" style={{ maxWidth: '500px', width: '100%' }}>
+          <div className="card-body p-4 text-center">
+            <h2 className="card-title mb-4">Authentication Not Configured</h2>
+            <div className="alert alert-info">
+              <p className="mb-2">
+                <strong>Supabase authentication is not yet configured.</strong>
+              </p>
+              <p className="mb-0 small">
+                To enable user accounts, sign up at{' '}
+                <a href="https://supabase.com" target="_blank" rel="noopener noreferrer">
+                  supabase.com
+                </a>{' '}
+                and update your <code>.env.local</code> file with your project credentials.
+              </p>
+            </div>
+            <button
+              onClick={() => router.push('/')}
+              className="btn btn-primary"
+            >
+              Back to Calculator
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
