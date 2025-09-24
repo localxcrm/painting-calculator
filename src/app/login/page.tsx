@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { isSupabaseConfigured } from '@/lib/config';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,10 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
 
   // Check if Supabase is configured
-  const isSupabaseConfigured = process.env.NEXT_PUBLIC_SUPABASE_URL &&
-                               process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-                               !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder') &&
-                               !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes('placeholder');
+  const supabaseConfigured = isSupabaseConfigured();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,9 +26,18 @@ export default function LoginPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/dashboard`
+          }
         });
         if (error) throw error;
-        setError('Check your email for the confirmation link!');
+        // Auto-login after signup (no email confirmation needed)
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (signInError) throw signInError;
+        router.push('/dashboard');
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -46,7 +53,7 @@ export default function LoginPage() {
     }
   };
 
-  if (!isSupabaseConfigured) {
+  if (!supabaseConfigured) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
         <div className="card shadow" style={{ maxWidth: '500px', width: '100%' }}>
