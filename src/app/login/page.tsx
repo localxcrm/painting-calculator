@@ -99,15 +99,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="text-center mt-3">
-            <button
-              type="button"
-              className="btn btn-outline-secondary btn-sm"
-              onClick={() => router.push('/')}
-            >
-              Back to Calculator
-            </button>
-          </div>
+
         </div>
       </div>
     </div>
