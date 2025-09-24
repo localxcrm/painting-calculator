@@ -22,6 +22,32 @@ const defaultProjectData: ProjectData = {
   subHourlyRate: 35,
   subNumPainters: 2,
   subHoursPerDay: 8,
+  salesCommissionPercentage: 10,
+  pmCommissionPercentage: 5,
+  paintBudgetPercentage: 12,
+};
+
+// Funções de localStorage
+const STORAGE_KEY = 'painting-calculator-data';
+
+const loadFromStorage = (): ProjectData | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.warn('Erro ao carregar dados do localStorage:', error);
+    return null;
+  }
+};
+
+const saveToStorage = (data: ProjectData): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.warn('Erro ao salvar dados no localStorage:', error);
+  }
 };
 
 export default function Dashboard() {
@@ -40,6 +66,7 @@ export default function Dashboard() {
     subcontractDays: 0,
   });
   const [workOrderCopied, setWorkOrderCopied] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const calculateValues = useCallback(() => {
     const totalCostBySq = projectData.pricePerSq * projectData.squareFootage;
@@ -50,8 +77,16 @@ export default function Dashboard() {
     const subcontractValue = totalCostBySq * (projectData.subcontractPercentage / 100);
     const subcontractDays = subcontractValue / (projectData.subHourlyRate * projectData.subNumPainters * projectData.subHoursPerDay);
 
-    // Margem calculada apenas com base no trabalho, sem subtrair tinta e subcontrato
-    const grossProfit = totalCostBySq - subcontractValue;
+    // Cálculo realista de margem: desconta todos os custos
+    const salesCommission = totalCostBySq * (projectData.salesCommissionPercentage / 100);
+    const pmCommission = totalCostBySq * (projectData.pmCommissionPercentage / 100);
+    const totalCommissions = salesCommission + pmCommission;
+
+    // Custos totais = tinta + subcontrato + comissões
+    const totalCosts = totalPaintCost + subcontractValue + totalCommissions;
+
+    // Margem real = valor do projeto - todos os custos
+    const grossProfit = totalCostBySq - totalCosts;
     const actualMarginPercentage = (grossProfit / totalCostBySq) * 100;
     const actualMaterialPercentage = (totalPaintCost / totalCostBySq) * 100;
 
@@ -68,6 +103,22 @@ export default function Dashboard() {
       subcontractDays,
     });
   }, [projectData]);
+
+  // Carregar dados do localStorage na inicialização
+  useEffect(() => {
+    const savedData = loadFromStorage();
+    if (savedData) {
+      setProjectData(savedData);
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Salvar dados automaticamente quando mudam
+  useEffect(() => {
+    if (isLoaded) {
+      saveToStorage(projectData);
+    }
+  }, [projectData, isLoaded]);
 
   useEffect(() => {
     calculateValues();
@@ -148,6 +199,11 @@ Financial Analysis:
 - Material Percentage: ${calculatedValues.actualMaterialPercentage.toFixed(1)}%
 - Target Material: ${projectData.targetMaterialPercentage}%
 
+Commissions & Administrative Expenses:
+- Sales Commission: ${projectData.salesCommissionPercentage}% ($${(calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100).toLocaleString()})
+- PM Commission: ${projectData.pmCommissionPercentage}% ($${(calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100).toLocaleString()})
+- Total Commissions: ${(projectData.salesCommissionPercentage + projectData.pmCommissionPercentage).toFixed(1)}% ($${((calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100) + (calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100)).toLocaleString()})
+
 Subcontract Information:
 - Subcontract Percentage: ${projectData.subcontractPercentage}%
 - Subcontract Value: $${calculatedValues.subcontractValue.toLocaleString()}
@@ -173,33 +229,10 @@ Subcontract Information:
   return (
     <div className="min-vh-100 p-4">
       {/* Header */}
-      <div className="bg-white border-bottom sticky-top mb-5 py-4 px-3">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-4">
-          <div>
-            <h1 className="display-5 fw-bold text-dark mb-2">
-              Professional Painting Calculator
-            </h1>
-            <p className="text-muted lead mb-0">
-              Comprehensive business tool for painting contractors
-            </p>
-          </div>
-          <button
-            onClick={copyWorkOrder}
-            className="btn btn-primary d-flex align-items-center gap-2"
-          >
-            {workOrderCopied ? (
-              <>
-                <CheckCircle style={{ width: '1.25rem', height: '1.25rem' }} />
-                <span>Work Order Copied!</span>
-              </>
-            ) : (
-              <>
-                <Copy style={{ width: '1.25rem', height: '1.25rem' }} />
-                <span>Generate Work Order</span>
-              </>
-            )}
-          </button>
-        </div>
+      <div className="text-center mb-5">
+        <h1 className="display-5 fw-bold text-dark mb-2">
+          Painting Calculator
+        </h1>
       </div>
 
       {/* Key Metrics */}
@@ -238,7 +271,7 @@ Subcontract Information:
       </div>
 
       {/* Tab Content */}
-      <div>
+      <div className="mb-5">
         {activeTab === 'calculator' && (
           <Calculator
             projectData={projectData}
@@ -247,6 +280,26 @@ Subcontract Information:
           />
         )}
         {activeTab === 'description' && <DescriptionGenerator />}
+      </div>
+
+      {/* Bottom Button */}
+      <div className="text-center">
+        <button
+          onClick={copyWorkOrder}
+          className="btn btn-primary btn-lg d-flex align-items-center gap-2 mx-auto"
+        >
+          {workOrderCopied ? (
+            <>
+              <CheckCircle style={{ width: '1.5rem', height: '1.5rem' }} />
+              <span>Work Order Copied!</span>
+            </>
+          ) : (
+            <>
+              <Copy style={{ width: '1.5rem', height: '1.5rem' }} />
+              <span>Generate Work Order</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );

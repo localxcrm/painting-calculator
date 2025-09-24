@@ -13,6 +13,9 @@ export interface ProjectData {
   subHourlyRate: number;
   subNumPainters: number;
   subHoursPerDay: number;
+  salesCommissionPercentage: number;
+  pmCommissionPercentage: number;
+  paintBudgetPercentage: number;
 }
 
 export interface CalculatedValues {
