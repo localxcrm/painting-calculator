@@ -156,3 +156,69 @@ CREATE INDEX idx_projects_user_id ON projects(user_id);
 -- 3. Go to /login and create your first account
 -- 4. You'll automatically become the admin user!
 -- =========================================
+
+-- =========================================
+-- PATCH: Settings Page Support (idempotent)
+-- Safe to run multiple times. This ensures the policies/columns
+-- needed by the Settings page are present and secure.
+-- =========================================
+
+-- 0) Ensure required extension exists (for gen_random_uuid if needed)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- 1) Ensure settings columns exist and are non-null
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}'::jsonb;
+ALTER TABLE companies ADD COLUMN IF NOT EXISTS settings JSONB DEFAULT '{}'::jsonb;
+UPDATE user_profiles SET settings = '{}'::jsonb WHERE settings IS NULL;
+
+-- 2) Harden user_profiles UPDATE policy with WITH CHECK to prevent cross-user writes
+DROP POLICY IF EXISTS "Users can update own profile" ON user_profiles;
+
+CREATE POLICY "Users can update own profile" ON user_profiles
+FOR UPDATE
+USING (id = auth.uid())
+WITH CHECK (id = auth.uid());
+
+-- 3) Ensure user can view own profile (create if missing)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'user_profiles'
+      AND policyname = 'Users can view own profile'
+  ) THEN
+    CREATE POLICY "Users can view own profile" ON user_profiles
+    FOR SELECT
+    USING (id = auth.uid());
+  END IF;
+END $$;
+
+-- 4) Ensure users can view their company (create if missing)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'companies'
+      AND policyname = 'Users can view their company'
+  ) THEN
+    CREATE POLICY "Users can view their company" ON companies
+    FOR SELECT
+    USING (
+      id = (SELECT company_id FROM user_profiles WHERE id = auth.uid())
+    );
+  END IF;
+END $$;
+
+-- 5) Optional: normalize default company's settings keys to match UI expectations
+UPDATE companies
+SET settings = jsonb_build_object(
+  'defaultPricePerSq', 4.00,
+  'defaultHourlyRate', 65,
+  'defaultCommissionSales', 10,
+  'defaultCommissionPM', 5,
+  'defaultMaterialPercentage', 12,
+  'defaultMarginPercentage', 25
+)
+WHERE domain = 'default';

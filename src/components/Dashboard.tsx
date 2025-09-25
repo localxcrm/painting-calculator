@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Calculator as CalculatorIcon, FileText, Copy, CheckCircle } from 'lucide-react';
+import { Calculator as CalculatorIcon, FileText, Copy, CheckCircle, Settings as SettingsIcon } from 'lucide-react';
 import MetricCard from './MetricCard';
 import Calculator from './Calculator';
 import DescriptionGenerator from './DescriptionGenerator';
 import { ProjectData, CalculatedValues, MetricCardData } from '@/types';
+import Link from 'next/link';
 
 const defaultProjectData: ProjectData = {
   pricePerSq: 4.00,
@@ -229,10 +230,14 @@ Subcontract Information:
   return (
     <div className="min-vh-100 p-4">
       {/* Header */}
-      <div className="text-center mb-5">
-        <h1 className="display-5 fw-bold text-dark mb-2">
-          Painting Calculator
-        </h1>
+      <div className="d-flex justify-content-between align-items-center mb-5">
+        <h1 className="display-5 fw-bold text-dark mb-0">Painting Calculator</h1>
+        <div className="d-flex gap-2">
+          <Link href="/settings" className="btn btn-outline-secondary d-flex align-items-center gap-2">
+            <SettingsIcon style={{ width: '1.25rem', height: '1.25rem' }} />
+            <span>Settings</span>
+          </Link>
+        </div>
       </div>
 
       {/* Key Metrics */}
