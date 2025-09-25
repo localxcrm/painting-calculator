@@ -23,7 +23,7 @@ export default async function SettingsPage() {
   // Load user profile settings and company id
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
-    .select('settings, company_id')
+    .select('settings, company_id, role')
     .eq('id', userRes.user.id)
     .single()
 
@@ -45,6 +45,9 @@ export default async function SettingsPage() {
       ? (profile.settings as Record<string, number>)
       : null
 
+  const companyId = profile?.company_id as string | undefined
+  const canEditCompanyDefaults = profile?.role === 'admin'
+
   return (
     <div className="min-vh-100 p-4">
       <div className="container-fluid">
@@ -63,6 +66,8 @@ export default async function SettingsPage() {
             <SettingsForm
               initialUserSettings={initialUserSettings as any}
               companyDefaults={companyDefaults as any}
+              companyId={companyId}
+              canEditCompanyDefaults={canEditCompanyDefaults}
             />
           </div>
           <div className="col-md-4">

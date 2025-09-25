@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { ProjectData } from '@/types';
@@ -27,7 +27,9 @@ type Settings = Partial<Record<NumericKeys, number>>;
 
 interface SettingsFormProps {
   initialUserSettings: Settings | null;
-  companyDefaults: Settings | null;
+  companyDefaults: Record<string, number> | null;
+  companyId?: string;
+  canEditCompanyDefaults?: boolean;
 }
 
 function toInputValue(value: number | undefined): string {
@@ -37,10 +39,30 @@ function toInputValue(value: number | undefined): string {
 export default function SettingsForm({
   initialUserSettings,
   companyDefaults,
+  companyId,
+  canEditCompanyDefaults,
 }: SettingsFormProps) {
   const router = useRouter();
 
-  const [values, setValues] = useState<Settings>(initialUserSettings ?? {});
+  // Keep a raw copy of company defaults (as stored in companies.settings)
+  const [companyDefaultsRaw, setCompanyDefaultsRaw] = useState<Record<string, number>>(companyDefaults ?? {});
+
+  // Map company defaults (company-level keys) to user settings keys used in the calculator
+  const mapCompanyDefaultsToUser = (raw: Record<string, number> | null | undefined): Settings => ({
+    pricePerSq: raw?.defaultPricePerSq,
+    hourlyRateWithMaterials: raw?.defaultHourlyRate,
+    salesCommissionPercentage: raw?.defaultCommissionSales,
+    pmCommissionPercentage: raw?.defaultCommissionPM,
+    targetMaterialPercentage: raw?.defaultMaterialPercentage,
+    targetMarginPercentage: raw?.defaultMarginPercentage,
+  });
+
+  // Memoized mapped defaults for fallbacks and initial form fill
+  const mappedCompanyDefaults = useMemo(() => mapCompanyDefaultsToUser(companyDefaultsRaw), [companyDefaultsRaw]);
+
+  // Prefill form with effective defaults (company defaults overlaid by user's saved settings)
+  const initialEffective: Settings = { ...(mappedCompanyDefaults ?? {}), ...(initialUserSettings ?? {}) };
+  const [values, setValues] = useState<Settings>(initialEffective);
   const [savedSettings, setSavedSettings] = useState<Settings>(initialUserSettings ?? {});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
@@ -61,14 +83,14 @@ export default function SettingsForm({
     setValues((prev) => ({ ...prev, [key]: num }));
   };
 
-  const getFallback = (key: NumericKeys): number | undefined => companyDefaults?.[key];
+  const getFallback = (key: NumericKeys): number | undefined => mappedCompanyDefaults?.[key];
 
   const getSaved = (key: NumericKeys): number | undefined => savedSettings?.[key];
 
   const getEffective = (key: NumericKeys): number | undefined => {
     const sv = savedSettings?.[key];
     if (sv !== undefined) return sv;
-    return companyDefaults?.[key];
+    return mappedCompanyDefaults?.[key];
   };
 
   const SavedInfo: React.FC<{ k: NumericKeys }> = ({ k }) => (
@@ -78,10 +100,8 @@ export default function SettingsForm({
   );
 
   const resetToCompanyDefaults = () => {
-    if (companyDefaults) {
-      setValues(companyDefaults);
-      setMessage({ type: 'info', text: 'Loaded company default values into the form. Remember to Save.' });
-    }
+    setValues(mappedCompanyDefaults as Settings);
+    setMessage({ type: 'info', text: 'Loaded company default values into the form. Remember to Save.' });
   };
 
   const sanitizePayload = (obj: Settings) => {
@@ -93,6 +113,46 @@ export default function SettingsForm({
       }
     });
     return out;
+  };
+
+  // Admin: update company default prices (writes to companies.settings)
+  const [companyValues, setCompanyValues] = useState<Record<string, number>>({
+    defaultPricePerSq: companyDefaultsRaw?.defaultPricePerSq ?? 4,
+    defaultHourlyRate: companyDefaultsRaw?.defaultHourlyRate ?? 65,
+    defaultCommissionSales: companyDefaultsRaw?.defaultCommissionSales ?? 10,
+    defaultCommissionPM: companyDefaultsRaw?.defaultCommissionPM ?? 5,
+    defaultMaterialPercentage: companyDefaultsRaw?.defaultMaterialPercentage ?? 12,
+    defaultMarginPercentage: companyDefaultsRaw?.defaultMarginPercentage ?? 25,
+  });
+
+  const setCompanyField = (key: keyof typeof companyValues, raw: string) => {
+    const v = raw.trim();
+    if (v === '') return;
+    const num = parseFloat(v);
+    if (Number.isNaN(num)) return;
+    setCompanyValues((prev) => ({ ...prev, [key]: num }));
+  };
+
+  const saveCompanyDefaults = async () => {
+    if (!companyId) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ settings: companyValues })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      // Update local raw defaults and thus fallbacks/effective values
+      setCompanyDefaultsRaw(companyValues);
+      setMessage({ type: 'success', text: 'Company default prices saved successfully.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err?.message || 'Failed to save company defaults.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const save = async () => {
@@ -133,8 +193,8 @@ export default function SettingsForm({
         if (typeof v === 'number' && !Number.isNaN(v)) {
           // Only assign known keys from NumericKeys onto ProjectData type
           (merged as any)[k] = v;
-        } else if (v === undefined && companyDefaults && companyDefaults[k] !== undefined) {
-          (merged as any)[k] = companyDefaults[k]!;
+        } else if (v === undefined && mappedCompanyDefaults && mappedCompanyDefaults[k] !== undefined) {
+          (merged as any)[k] = mappedCompanyDefaults[k]!;
         }
       });
 
@@ -383,6 +443,99 @@ export default function SettingsForm({
           </div>
         </div>
       </Section>
+
+      {/* Company Default Prices (Admin) */}
+      {canEditCompanyDefaults && companyId && (
+        <Section title="Company Default Prices (Admin)">
+          <div className="row g-3">
+            <div className="col-md-4">
+              <label className="form-label">Default Price per SF ($)</label>
+              <input
+                type="number"
+                step="0.25"
+                className="form-control"
+                value={toInputValue(companyValues.defaultPricePerSq)}
+                onChange={(e) => setCompanyField('defaultPricePerSq', e.target.value)}
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">Default Hourly Rate ($)</label>
+              <input
+                type="number"
+                step="1"
+                className="form-control"
+                value={toInputValue(companyValues.defaultHourlyRate)}
+                onChange={(e) => setCompanyField('defaultHourlyRate', e.target.value)}
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">Material % Target</label>
+              <input
+                type="number"
+                step="0.5"
+                min={0}
+                max={100}
+                className="form-control"
+                value={toInputValue(companyValues.defaultMaterialPercentage)}
+                onChange={(e) => setCompanyField('defaultMaterialPercentage', e.target.value)}
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">Margin % Target</label>
+              <input
+                type="number"
+                step="0.5"
+                min={0}
+                max={100}
+                className="form-control"
+                value={toInputValue(companyValues.defaultMarginPercentage)}
+                onChange={(e) => setCompanyField('defaultMarginPercentage', e.target.value)}
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">Sales Commission (%)</label>
+              <input
+                type="number"
+                step="0.5"
+                min={0}
+                max={100}
+                className="form-control"
+                value={toInputValue(companyValues.defaultCommissionSales)}
+                onChange={(e) => setCompanyField('defaultCommissionSales', e.target.value)}
+              />
+            </div>
+            <div className="col-md-4">
+              <label className="form-label">PM Commission (%)</label>
+              <input
+                type="number"
+                step="0.5"
+                min={0}
+                max={100}
+                className="form-control"
+                value={toInputValue(companyValues.defaultCommissionPM)}
+                onChange={(e) => setCompanyField('defaultCommissionPM', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="d-flex gap-2 mt-3">
+            <button className="btn btn-secondary" onClick={saveCompanyDefaults} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Company Defaults'}
+            </button>
+            <button
+              className="btn btn-outline-secondary"
+              onClick={resetToCompanyDefaults}
+              disabled={saving}
+              title="Load company defaults into my personal settings form"
+            >
+              Load into My Form
+            </button>
+          </div>
+          <div className="text-muted small mt-2">
+            These defaults are used as fallbacks for users in this company. Users can override them in their personal settings.
+          </div>
+        </Section>
+      )}
 
       {/* Targets */}
       <Section title="Targets">
