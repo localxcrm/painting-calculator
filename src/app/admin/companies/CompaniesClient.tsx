@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 interface Company {
   id: string;
@@ -16,6 +17,8 @@ interface Company {
     defaultHourlyRate: number;
     defaultCommissionSales: number;
     defaultCommissionPM: number;
+    defaultMaterialPercentage: number;
+    defaultMarginPercentage: number;
   };
 }
 
@@ -34,7 +37,9 @@ export default function CompaniesClient({ initialCompanies }: CompaniesClientPro
     defaultPricePerSq: 4.00,
     defaultHourlyRate: 65,
     defaultCommissionSales: 10,
-    defaultCommissionPM: 5
+    defaultCommissionPM: 5,
+    defaultMaterialPercentage: 12,
+    defaultMarginPercentage: 25
   });
 
   const filteredCompanies = companies.filter(company =>
@@ -51,41 +56,75 @@ export default function CompaniesClient({ initialCompanies }: CompaniesClientPro
     return badges[status as keyof typeof badges] || badges.pending;
   };
 
-  const handleAddCompany = () => {
+  const handleAddCompany = async () => {
     if (!newCompany.name || !newCompany.domain) return;
 
-    const company: Company = {
-      id: Date.now().toString(),
-      name: newCompany.name,
-      domain: newCompany.domain.toLowerCase().replace(/\s+/g, '-'),
-      status: 'pending',
-      usersCount: 0,
-      projectsCount: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-      settings: {
-        defaultPricePerSq: newCompany.defaultPricePerSq,
-        defaultHourlyRate: newCompany.defaultHourlyRate,
-        defaultCommissionSales: newCompany.defaultCommissionSales,
-        defaultCommissionPM: newCompany.defaultCommissionPM
-      }
-    };
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .insert({
+          name: newCompany.name,
+          domain: newCompany.domain.toLowerCase().replace(/\s+/g, '-'),
+          status: 'active',
+          settings: {
+            defaultPricePerSq: newCompany.defaultPricePerSq,
+            defaultHourlyRate: newCompany.defaultHourlyRate,
+            defaultCommissionSales: newCompany.defaultCommissionSales,
+            defaultCommissionPM: newCompany.defaultCommissionPM,
+            defaultMaterialPercentage: newCompany.defaultMaterialPercentage,
+            defaultMarginPercentage: newCompany.defaultMarginPercentage
+          }
+        })
+        .select()
+        .single();
 
-    setCompanies([...companies, company]);
-    setNewCompany({
-      name: '',
-      domain: '',
-      defaultPricePerSq: 4.00,
-      defaultHourlyRate: 65,
-      defaultCommissionSales: 10,
-      defaultCommissionPM: 5
-    });
-    setShowAddCompany(false);
+      if (error) throw error;
+
+      const newCompanyData: Company = {
+        id: data.id,
+        name: data.name,
+        domain: data.domain,
+        status: data.status,
+        usersCount: 0,
+        projectsCount: 0,
+        createdAt: new Date(data.created_at).toLocaleDateString(),
+        settings: data.settings
+      };
+
+      setCompanies([newCompanyData, ...companies]);
+      setNewCompany({
+        name: '',
+        domain: '',
+        defaultPricePerSq: 4.00,
+        defaultHourlyRate: 65,
+        defaultCommissionSales: 10,
+        defaultCommissionPM: 5,
+        defaultMaterialPercentage: 12,
+        defaultMarginPercentage: 25
+      });
+      setShowAddCompany(false);
+    } catch (error) {
+      console.error('Error creating company:', error);
+      alert('Failed to create company. Please try again.');
+    }
   };
 
-  const handleStatusChange = (companyId: string, newStatus: Company['status']) => {
-    setCompanies(companies.map(company =>
-      company.id === companyId ? { ...company, status: newStatus } : company
-    ));
+  const handleStatusChange = async (companyId: string, newStatus: Company['status']) => {
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .update({ status: newStatus })
+        .eq('id', companyId);
+
+      if (error) throw error;
+
+      setCompanies(companies.map(company =>
+        company.id === companyId ? { ...company, status: newStatus } : company
+      ));
+    } catch (error) {
+      console.error('Error updating company status:', error);
+      alert('Failed to update company status. Please try again.');
+    }
   };
 
   return (
@@ -219,35 +258,39 @@ export default function CompaniesClient({ initialCompanies }: CompaniesClientPro
                   ></button>
                 </div>
                 <div className="modal-body">
-                  <div className="alert alert-info">
-                    <strong>Note:</strong> In a real implementation, this would create the company in Supabase with proper database setup.
+                  <div className="alert alert-success">
+                    <strong>Setup New Painting Business:</strong> Configure default calculator settings for this company.
                   </div>
 
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label">Company Name</label>
+                      <label className="form-label">Company Name *</label>
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="PaintCo Brasil"
+                        placeholder="e.g., Elite Painting Services"
                         value={newCompany.name}
                         onChange={(e) => setNewCompany({...newCompany, name: e.target.value})}
+                        required
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label">Domain</label>
+                      <label className="form-label">Domain Identifier *</label>
                       <input
                         type="text"
                         className="form-control"
-                        placeholder="paintco-brasil"
+                        placeholder="e.g., elite-painting"
                         value={newCompany.domain}
                         onChange={(e) => setNewCompany({...newCompany, domain: e.target.value})}
+                        required
                       />
-                      <small className="text-muted">Used for company subdomain</small>
+                      <small className="text-muted">Used for company identification (lowercase, no spaces)</small>
                     </div>
 
                     <div className="col-12">
-                      <h6>Default Pricing Settings</h6>
+                      <hr />
+                      <h6 className="text-primary">Default Calculator Settings</h6>
+                      <p className="text-muted small mb-3">These will be the default values for all users in this company</p>
                     </div>
 
                     <div className="col-md-3">
@@ -256,8 +299,9 @@ export default function CompaniesClient({ initialCompanies }: CompaniesClientPro
                         type="number"
                         className="form-control"
                         step="0.25"
+                        min="0"
                         value={newCompany.defaultPricePerSq}
-                        onChange={(e) => setNewCompany({...newCompany, defaultPricePerSq: parseFloat(e.target.value)})}
+                        onChange={(e) => setNewCompany({...newCompany, defaultPricePerSq: parseFloat(e.target.value) || 0})}
                       />
                     </div>
                     <div className="col-md-3">
@@ -265,26 +309,57 @@ export default function CompaniesClient({ initialCompanies }: CompaniesClientPro
                       <input
                         type="number"
                         className="form-control"
+                        min="0"
                         value={newCompany.defaultHourlyRate}
-                        onChange={(e) => setNewCompany({...newCompany, defaultHourlyRate: parseFloat(e.target.value)})}
+                        onChange={(e) => setNewCompany({...newCompany, defaultHourlyRate: parseFloat(e.target.value) || 0})}
                       />
                     </div>
                     <div className="col-md-3">
+                      <label className="form-label">Material % Target</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        step="0.5"
+                        min="0"
+                        max="100"
+                        value={newCompany.defaultMaterialPercentage}
+                        onChange={(e) => setNewCompany({...newCompany, defaultMaterialPercentage: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Margin % Target</label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        step="0.5"
+                        min="0"
+                        max="100"
+                        value={newCompany.defaultMarginPercentage}
+                        onChange={(e) => setNewCompany({...newCompany, defaultMarginPercentage: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                    <div className="col-md-6">
                       <label className="form-label">Sales Commission (%)</label>
                       <input
                         type="number"
                         className="form-control"
+                        step="0.5"
+                        min="0"
+                        max="100"
                         value={newCompany.defaultCommissionSales}
-                        onChange={(e) => setNewCompany({...newCompany, defaultCommissionSales: parseFloat(e.target.value)})}
+                        onChange={(e) => setNewCompany({...newCompany, defaultCommissionSales: parseFloat(e.target.value) || 0})}
                       />
                     </div>
-                    <div className="col-md-3">
+                    <div className="col-md-6">
                       <label className="form-label">PM Commission (%)</label>
                       <input
                         type="number"
                         className="form-control"
+                        step="0.5"
+                        min="0"
+                        max="100"
                         value={newCompany.defaultCommissionPM}
-                        onChange={(e) => setNewCompany({...newCompany, defaultCommissionPM: parseFloat(e.target.value)})}
+                        onChange={(e) => setNewCompany({...newCompany, defaultCommissionPM: parseFloat(e.target.value) || 0})}
                       />
                     </div>
                   </div>

@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next",
+    "db:types": "supabase gen types typescript --local > src/types/supabase.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",

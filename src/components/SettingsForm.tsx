@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import type { ProjectData } from '@/types';
 
 type NumericKeys =
   | 'pricePerSq'
@@ -26,7 +25,7 @@ type NumericKeys =
 type Settings = Partial<Record<NumericKeys, number>>;
 
 interface SettingsFormProps {
-  initialUserSettings: Settings | null;
+  initialUserSettings: Record<string, number> | null;
   companyDefaults: Record<string, number> | null;
   companyId?: string;
   canEditCompanyDefaults?: boolean;
@@ -61,9 +60,10 @@ export default function SettingsForm({
   const mappedCompanyDefaults = useMemo(() => mapCompanyDefaultsToUser(companyDefaultsRaw), [companyDefaultsRaw]);
 
   // Prefill form with effective defaults (company defaults overlaid by user's saved settings)
-  const initialEffective: Settings = { ...(mappedCompanyDefaults ?? {}), ...(initialUserSettings ?? {}) };
+  const initialUserSettingsTyped = (initialUserSettings ?? null) as Settings | null;
+  const initialEffective: Settings = { ...(mappedCompanyDefaults ?? {}), ...(initialUserSettingsTyped ?? {}) };
   const [values, setValues] = useState<Settings>(initialEffective);
-  const [savedSettings, setSavedSettings] = useState<Settings>(initialUserSettings ?? {});
+  const [savedSettings, setSavedSettings] = useState<Settings>(initialUserSettingsTyped ?? {});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
@@ -71,10 +71,10 @@ export default function SettingsForm({
     const v = raw.trim();
     if (v === '') {
       setValues((prev) => {
-        const next = { ...prev };
-        // remove key to allow fallback from companyDefaults
-        delete (next as any)[key];
-        return next;
+        const rest = { ...prev };
+        // remove key to allow fallback from company defaults
+        delete rest[key];
+        return rest;
       });
       return;
     }
@@ -148,8 +148,8 @@ export default function SettingsForm({
       // Update local raw defaults and thus fallbacks/effective values
       setCompanyDefaultsRaw(companyValues);
       setMessage({ type: 'success', text: 'Company default prices saved successfully.' });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err?.message || 'Failed to save company defaults.' });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save company defaults.' });
     } finally {
       setSaving(false);
     }
@@ -164,45 +164,38 @@ export default function SettingsForm({
       if (!user) throw new Error('Not authenticated');
 
       const payload = sanitizePayload(values);
-      const { error } = await supabase
+      
+      // Use upsert to handle both update and insert in one operation
+      const { data, error } = await supabase
         .from('user_profiles')
-        .update({ settings: payload })
-        .eq('id', user.id);
+        .upsert({ 
+          id: user.id, 
+          settings: payload,
+          full_name: user.user_metadata?.full_name || null
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        throw new Error(`Failed to save settings: ${error.message || 'Database error'}`);
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('Failed to save settings. No data returned from database.');
+      }
 
       setSavedSettings(payload);
       setMessage({ type: 'success', text: 'Settings saved successfully.' });
-    } catch (err: any) {
-      setMessage({ type: 'error', text: err?.message || 'Failed to save settings.' });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save settings.' });
     } finally {
       setSaving(false);
     }
   };
 
   const applyToCalculator = () => {
-    try {
-      const STORAGE_KEY = 'painting-calculator-data';
-      const existingRaw = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-      const existing = existingRaw ? JSON.parse(existingRaw) as Partial<ProjectData> : {};
-
-      const merged: Partial<ProjectData> = { ...existing };
-
-      (Object.keys(values) as NumericKeys[]).forEach((k) => {
-        const v = values[k];
-        if (typeof v === 'number' && !Number.isNaN(v)) {
-          // Only assign known keys from NumericKeys onto ProjectData type
-          (merged as any)[k] = v;
-        } else if (v === undefined && mappedCompanyDefaults && mappedCompanyDefaults[k] !== undefined) {
-          (merged as any)[k] = mappedCompanyDefaults[k]!;
-        }
-      });
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      router.push('/dashboard');
-    } catch {
-      setMessage({ type: 'error', text: 'Failed to apply settings to calculator.' });
-    }
+    // Now that the Dashboard reads exclusively from Supabase on the server,
+    // we only need to navigate there. No localStorage writes.
+    router.push('/dashboard');
   };
 
   const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
@@ -577,7 +570,7 @@ export default function SettingsForm({
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
         <button className="btn btn-outline-primary" onClick={applyToCalculator}>
-          Apply to Calculator Now
+          Go to Dashboard
         </button>
         <button className="btn btn-outline-secondary" onClick={resetToCompanyDefaults} disabled={!companyDefaults}>
           Reset to Company Defaults

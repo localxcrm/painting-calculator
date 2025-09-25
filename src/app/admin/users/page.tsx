@@ -59,5 +59,12 @@ export default async function UsersPage() {
     projectsCount: user.projects?.[0]?.count || 0
   }))
 
-  return <UsersClient initialUsers={transformedUsers} />
+  // Fetch companies for user assignment
+  const { data: companies } = await supabase
+    .from('companies')
+    .select('id, name, domain')
+    .eq('status', 'active')
+    .order('name');
+
+  return <UsersClient initialUsers={transformedUsers} companies={companies || []} />
 }

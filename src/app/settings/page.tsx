@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getServerSupabase } from '@/lib/supabaseServer'
 import Link from 'next/link'
 import SettingsForm from '@/components/SettingsForm'
+import SignOutButton from '@/components/SignOutButton'
 
 export default async function SettingsPage() {
   const supabase = await getServerSupabase()
@@ -21,7 +22,7 @@ export default async function SettingsPage() {
   }
 
   // Load user profile settings and company id
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile } = await supabase
     .from('user_profiles')
     .select('settings, company_id, role')
     .eq('id', userRes.user.id)
@@ -64,8 +65,8 @@ export default async function SettingsPage() {
         <div className="row">
           <div className="col-md-8">
             <SettingsForm
-              initialUserSettings={initialUserSettings as any}
-              companyDefaults={companyDefaults as any}
+              initialUserSettings={initialUserSettings}
+              companyDefaults={companyDefaults}
               companyId={companyId}
               canEditCompanyDefaults={canEditCompanyDefaults}
             />
@@ -80,14 +81,10 @@ export default async function SettingsPage() {
                   <Link href="/dashboard" className="btn btn-primary">
                     Back to Calculator
                   </Link>
-                  <form action="/login" method="get">
-                    <button className="btn btn-outline-danger" type="submit">
-                      Sign Out (Go to Login)
-                    </button>
-                  </form>
+                  <SignOutButton />
                   <div className="alert alert-info mb-0">
                     <small>
-                      Tip: Use "Apply to Calculator Now" after saving to immediately see your defaults in the Dashboard.
+                      Tip: Use the Go to Dashboard button after saving to immediately see your defaults in the Dashboard.
                     </small>
                   </div>
                 </div>

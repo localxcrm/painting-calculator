@@ -8,52 +8,13 @@ import DescriptionGenerator from './DescriptionGenerator';
 import { ProjectData, CalculatedValues, MetricCardData } from '@/types';
 import Link from 'next/link';
 
-const defaultProjectData: ProjectData = {
-  pricePerSq: 4.00,
-  squareFootage: 3800,
-  hourlyRateWithMaterials: 65,
-  numPainters: 3,
-  hoursPerDay: 10,
-  paintCoverage: 350,
-  numberOfCoats: 2,
-  paintCostPerGallon: 65,
-  targetMaterialPercentage: 12,
-  targetMarginPercentage: 25,
-  subcontractPercentage: 50,
-  subHourlyRate: 35,
-  subNumPainters: 2,
-  subHoursPerDay: 8,
-  salesCommissionPercentage: 10,
-  pmCommissionPercentage: 5,
-  paintBudgetPercentage: 12,
+type Props = {
+  initialData: ProjectData;
 };
 
-// Funções de localStorage
-const STORAGE_KEY = 'painting-calculator-data';
-
-const loadFromStorage = (): ProjectData | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : null;
-  } catch (error) {
-    console.warn('Erro ao carregar dados do localStorage:', error);
-    return null;
-  }
-};
-
-const saveToStorage = (data: ProjectData): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch (error) {
-    console.warn('Erro ao salvar dados no localStorage:', error);
-  }
-};
-
-export default function Dashboard() {
+export default function Dashboard({ initialData }: Props) {
   const [activeTab, setActiveTab] = useState<'calculator' | 'description'>('calculator');
-  const [projectData, setProjectData] = useState<ProjectData>(defaultProjectData);
+  const [projectData, setProjectData] = useState<ProjectData>(initialData);
   const [calculatedValues, setCalculatedValues] = useState<CalculatedValues>({
     totalCostBySq: 0,
     totalServiceHours: 0,
@@ -67,29 +28,32 @@ export default function Dashboard() {
     subcontractDays: 0,
   });
   const [workOrderCopied, setWorkOrderCopied] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
 
   const calculateValues = useCallback(() => {
     const totalCostBySq = projectData.pricePerSq * projectData.squareFootage;
-    const totalServiceHours = totalCostBySq / projectData.hourlyRateWithMaterials;
-    const workDaysToComplete = totalServiceHours / (projectData.numPainters * projectData.hoursPerDay);
-    const gallonsNeeded = (projectData.squareFootage / projectData.paintCoverage) * projectData.numberOfCoats;
+    const totalServiceHours = projectData.hourlyRateWithMaterials > 0 ? (totalCostBySq / projectData.hourlyRateWithMaterials) : 0;
+    const workDaysToComplete =
+      projectData.numPainters > 0 && projectData.hoursPerDay > 0
+        ? (totalServiceHours / (projectData.numPainters * projectData.hoursPerDay))
+        : 0;
+    const gallonsNeeded =
+      projectData.paintCoverage > 0
+        ? ((projectData.squareFootage / projectData.paintCoverage) * Math.max(projectData.numberOfCoats, 0))
+        : 0;
     const totalPaintCost = gallonsNeeded * projectData.paintCostPerGallon;
     const subcontractValue = totalCostBySq * (projectData.subcontractPercentage / 100);
-    const subcontractDays = subcontractValue / (projectData.subHourlyRate * projectData.subNumPainters * projectData.subHoursPerDay);
+    const denom = projectData.subHourlyRate * projectData.subNumPainters * projectData.subHoursPerDay;
+    const subcontractDays = denom > 0 ? (subcontractValue / denom) : 0;
 
-    // Cálculo realista de margem: desconta todos os custos
     const salesCommission = totalCostBySq * (projectData.salesCommissionPercentage / 100);
     const pmCommission = totalCostBySq * (projectData.pmCommissionPercentage / 100);
     const totalCommissions = salesCommission + pmCommission;
 
-    // Custos totais = tinta + subcontrato + comissões
     const totalCosts = totalPaintCost + subcontractValue + totalCommissions;
 
-    // Margem real = valor do projeto - todos os custos
     const grossProfit = totalCostBySq - totalCosts;
-    const actualMarginPercentage = (grossProfit / totalCostBySq) * 100;
-    const actualMaterialPercentage = (totalPaintCost / totalCostBySq) * 100;
+    const actualMarginPercentage = totalCostBySq > 0 ? ((grossProfit / totalCostBySq) * 100) : 0;
+    const actualMaterialPercentage = totalCostBySq > 0 ? ((totalPaintCost / totalCostBySq) * 100) : 0;
 
     setCalculatedValues({
       totalCostBySq,
@@ -104,22 +68,6 @@ export default function Dashboard() {
       subcontractDays,
     });
   }, [projectData]);
-
-  // Carregar dados do localStorage na inicialização
-  useEffect(() => {
-    const savedData = loadFromStorage();
-    if (savedData) {
-      setProjectData(savedData);
-    }
-    setIsLoaded(true);
-  }, []);
-
-  // Salvar dados automaticamente quando mudam
-  useEffect(() => {
-    if (isLoaded) {
-      saveToStorage(projectData);
-    }
-  }, [projectData, isLoaded]);
 
   useEffect(() => {
     calculateValues();
@@ -241,9 +189,9 @@ Subcontract Information:
       </div>
 
       {/* Key Metrics */}
-      <div className="row g-3 mb-5">
+      <div className="row g-2 mb-4">
         {metrics.map((metric, index) => (
-          <div key={index} className="col-12 col-md-6 col-xl-2-4">
+          <div key={index} className="col-6 col-md-4 col-lg-3 col-xl-2">
             <MetricCard {...metric} />
           </div>
         ))}

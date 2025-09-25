@@ -106,6 +106,7 @@ export default function LoginPage() {
                 className="form-control"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
                 required
               />
             </div>
@@ -118,6 +119,7 @@ export default function LoginPage() {
                 className="form-control"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete={isSignUp ? "new-password" : "current-password"}
                 required
                 minLength={6}
               />
