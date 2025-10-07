@@ -1,14 +1,14 @@
 import { getServerSupabase } from '@/lib/supabaseServer'
-import { NextResponse } from 'next/server'
-import { ProjectData, CalculatedValues } from '@/types'
+import { NextResponse, NextRequest } from 'next/server'
 
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await getServerSupabase()
-    
+
     // Check authentication
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
@@ -16,7 +16,7 @@ export async function GET(
     }
 
     const userId = session.user.id
-    
+
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
@@ -43,7 +43,7 @@ export async function GET(
         user_id,
         user_profiles!inner(full_name)
       `)
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', profile.company_id)
       // Non-admin users can only see their own projects
       .eq(profile.role !== 'admin' ? 'user_id' : 'company_id', profile.role !== 'admin' ? userId : profile.company_id)
@@ -62,12 +62,13 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await getServerSupabase()
-    
+
     // Check authentication
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
@@ -75,7 +76,7 @@ export async function PUT(
     }
 
     const userId = session.user.id
-    
+
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
@@ -100,7 +101,7 @@ export async function PUT(
         client,
         updated_at: new Date().toISOString()
       })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', profile.company_id)
       // Non-admin users can only update their own projects
       .eq(profile.role !== 'admin' ? 'user_id' : 'company_id', profile.role !== 'admin' ? userId : profile.company_id)
@@ -124,12 +125,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const supabase = await getServerSupabase()
-    
+
     // Check authentication
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
     if (sessionError || !session) {
@@ -137,7 +139,7 @@ export async function DELETE(
     }
 
     const userId = session.user.id
-    
+
     // Get user profile
     const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
@@ -153,7 +155,7 @@ export async function DELETE(
     const { error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('company_id', profile.company_id)
       // Non-admin users can only delete their own projects
       .eq(profile.role !== 'admin' ? 'user_id' : 'company_id', profile.role !== 'admin' ? userId : profile.company_id)
