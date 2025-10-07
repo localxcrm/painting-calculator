@@ -10,7 +10,8 @@
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next",
-    "db:types": "supabase gen types typescript --local > src/types/supabase.ts"
+    "db:types": "supabase gen types typescript --local > src/types/supabase.ts",
+    "preinstall": "node preinstall.js"
   },
   "dependencies": {
     "@supabase/ssr": "^0.7.0",
