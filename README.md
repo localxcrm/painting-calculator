@@ -4,11 +4,20 @@ A comprehensive business tool for painting contractors to calculate project cost
 
 ## Features
 
-### 🧮 Advanced Calculator
+### 🎨 Professional Painting Description Generator
+- **Project Type Selection**: Exterior, interior, or both
+- **Detailed Service Configuration**: Soft wash, scraping, sanding, priming, patching, crack repair
+- **Customizable Areas & Components**: House, shed, deck, garage, fence with trims, siding, windows, etc.
+- **Room-by-room Interior Planning**: Detailed breakdown by room components
+- **Professional Description Output**: Automatically generates detailed job descriptions
+- **One-click Copy**: Easy copying for proposals
+
+### 🧮 Advanced Project Cost Management
 - **17-parameter cost estimation** with real-time calculations
 - **Multi-dimensional costing**: Labor, materials, commissions, subcontracting
+- **Paint Budget Analysis**: Dual calculation for required vs budgeted materials
 - **Profit analysis**: Margin calculations, material percentage tracking
-- **Professional output**: Work order generation
+- **Real-time Work Order Generation**: Professional documentation with all project details
 
 ### 👥 Multi-Tenant System
 - **Company isolation** with separate settings and users

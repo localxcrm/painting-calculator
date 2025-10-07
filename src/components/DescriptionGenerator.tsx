@@ -14,7 +14,7 @@ const defaultDescriptionData: DescriptionData = {
     sanding: true,
     priming: true,
     areas: ['house'],
-    components: ['trims', 'siding', 'windows']
+    components: ['trims', 'siding', 'windows', 'doors']
   },
   interior: {
     sanding: true,
@@ -22,7 +22,8 @@ const defaultDescriptionData: DescriptionData = {
     crackRepair: true,
     rooms: [
       { id: '1', name: 'Living Room', components: ['walls', 'trims', 'ceiling'] },
-      { id: '2', name: 'Kitchen', components: ['walls', 'trims', 'doors'] }
+      { id: '2', name: 'Kitchen', components: ['walls', 'trims', 'doors'] },
+      { id: '3', name: 'Bedroom', components: ['walls', 'trims', 'ceiling'] }
     ]
   }
 };

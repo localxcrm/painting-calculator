@@ -82,6 +82,11 @@ export default async function SettingsPage() {
                     Back to Calculator
                   </Link>
                   <SignOutButton />
+                  {canEditCompanyDefaults && (
+                    <Link href="/admin" className="btn btn-warning">
+                      Admin Dashboard
+                    </Link>
+                  )}
                   <div className="alert alert-info mb-0">
                     <small>
                       Tip: Use the Go to Dashboard button after saving to immediately see your defaults in the Dashboard.

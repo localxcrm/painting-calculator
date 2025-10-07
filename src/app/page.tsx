@@ -41,7 +41,10 @@ export default async function Home() {
         <p className="lead text-muted mb-4">
           Professional business tool for painting contractors
         </p>
-        <div className="d-flex gap-3 justify-content-center">
+        <div className="d-flex gap-3 justify-content-center flex-wrap">
+          <Link href="/interior-calculator" className="btn btn-success btn-lg">
+            Interior Calculator
+          </Link>
           <Link href="/login" className="btn btn-primary btn-lg">
             Sign In
           </Link>

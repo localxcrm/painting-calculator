@@ -40,11 +40,6 @@ export default function UsersClient({ initialUsers, companies }: UsersClientProp
     companyId: ''
   });
   const [isCreating, setIsCreating] = useState(false);
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [resetPasswordUser, setResetPasswordUser] = useState<User | null>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [isResetting, setIsResetting] = useState(false);
-
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -79,45 +74,6 @@ export default function UsersClient({ initialUsers, companies }: UsersClientProp
     ));
   };
 
-  const handleResetPassword = async () => {
-    if (!resetPasswordUser || !newPassword) return;
-
-    setIsResetting(true);
-    try {
-      // For now, we'll just update a password field in user_profiles
-      // In a real implementation, you'd update the auth system
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({ 
-          updated_at: new Date().toISOString(),
-          // Note: In a real system, you'd hash the password and store it securely
-          // or use Supabase Auth's password reset functionality
-        })
-        .eq('id', resetPasswordUser.id);
-
-      if (error) {
-        throw new Error(`Password reset error: ${error.message}`);
-      }
-
-      // Close modal and reset form
-      setShowResetPassword(false);
-      setResetPasswordUser(null);
-      setNewPassword('');
-
-      alert(`Password reset successfully for ${resetPasswordUser.name}!\n\nNew password: ${newPassword}\n\nPlease share this with the user securely.`);
-    } catch (error) {
-      console.error('Error resetting password:', error);
-      alert(`Failed to reset password: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsResetting(false);
-    }
-  };
-
-  const openResetPasswordModal = (user: User) => {
-    setResetPasswordUser(user);
-    setNewPassword('');
-    setShowResetPassword(true);
-  };
 
   const handleCreateUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password || !newUser.companyId) return;
@@ -319,12 +275,6 @@ export default function UsersClient({ initialUsers, companies }: UsersClientProp
                             onClick={() => handleStatusToggle(user.id)}
                           >
                             {user.status === 'active' ? 'Deactivate' : 'Activate'}
-                          </button>
-                          <button 
-                            className="btn btn-outline-secondary"
-                            onClick={() => openResetPasswordModal(user)}
-                          >
-                            Reset Password
                           </button>
                         </div>
                       </td>

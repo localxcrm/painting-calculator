@@ -122,44 +122,92 @@ export default function Dashboard({ initialData }: Props) {
     const workOrder = `
 PROFESSIONAL PAINTING WORK ORDER
 
-Project Details:
-- Total Square Footage: ${projectData.squareFootage.toLocaleString()} SF
-- Price per Square Foot: $${projectData.pricePerSq.toFixed(2)}
-- Total Project Value: $${calculatedValues.totalCostBySq.toLocaleString()}
+PROJECT OVERVIEW
+----------------
+Project Type: Professional Painting Service
+Total Square Footage: ${projectData.squareFootage.toLocaleString()} SF
+Price per Square Foot: $${projectData.pricePerSq.toFixed(2)}
+Total Project Value: $${calculatedValues.totalCostBySq.toLocaleString()}
 
-Labor Requirements:
-- Hourly Rate: $${projectData.hourlyRateWithMaterials}
+PROJECT SCOPE & SPECIFICATIONS
+------------------------------
+Number of Coats: ${projectData.numberOfCoats}
+Paint Coverage: ${projectData.paintCoverage} SF/gallon
+Paint Cost per Gallon: $${projectData.paintCostPerGallon}
+Estimated Gallons Required: ${calculatedValues.gallonsNeeded.toFixed(1)} gallons
+Total Material Cost: $${calculatedValues.totalPaintCost.toFixed(2)}
+
+LABOR REQUIREMENTS
+------------------
+Primary Team:
+- Hourly Rate (with materials): $${projectData.hourlyRateWithMaterials}
 - Number of Painters: ${projectData.numPainters}
 - Hours per Day: ${projectData.hoursPerDay}
-- Total Hours Required: ${calculatedValues.totalServiceHours.toFixed(1)}
-- Estimated Completion: ${calculatedValues.workDaysToComplete.toFixed(1)} days
+- Total Hours Required: ${calculatedValues.totalServiceHours.toFixed(1)} hours
+- Estimated Completion Time: ${calculatedValues.workDaysToComplete.toFixed(1)} days
 
-Material Requirements:
-- Paint Coverage: ${projectData.paintCoverage} SF/gallon
-- Number of Coats: ${projectData.numberOfCoats}
-- Paint Cost per Gallon: $${projectData.paintCostPerGallon}
-- Gallons Required: ${calculatedValues.gallonsNeeded.toFixed(1)}
-- Total Paint Cost: $${calculatedValues.totalPaintCost.toFixed(2)}
-
-Financial Analysis:
-- Gross Profit: $${calculatedValues.grossProfit.toLocaleString()}
-- Actual Margin: ${calculatedValues.actualMarginPercentage.toFixed(1)}%
-- Target Margin: ${projectData.targetMarginPercentage}%
-- Material Percentage: ${calculatedValues.actualMaterialPercentage.toFixed(1)}%
-- Target Material: ${projectData.targetMaterialPercentage}%
-
-Commissions & Administrative Expenses:
-- Sales Commission: ${projectData.salesCommissionPercentage}% ($${(calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100).toLocaleString()})
-- PM Commission: ${projectData.pmCommissionPercentage}% ($${(calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100).toLocaleString()})
-- Total Commissions: ${(projectData.salesCommissionPercentage + projectData.pmCommissionPercentage).toFixed(1)}% ($${((calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100) + (calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100)).toLocaleString()})
-
-Subcontract Information:
+Subcontract Work:
 - Subcontract Percentage: ${projectData.subcontractPercentage}%
-- Subcontract Value: $${calculatedValues.subcontractValue.toLocaleString()}
 - Sub Hourly Rate: $${projectData.subHourlyRate}
 - Sub Painters: ${projectData.subNumPainters}
 - Sub Hours per Day: ${projectData.subHoursPerDay}
-- Subcontract Days: ${calculatedValues.subcontractDays.toFixed(1)}
+- Subcontract Value: $${calculatedValues.subcontractValue.toLocaleString()}
+- Subcontract Days: ${calculatedValues.subcontractDays.toFixed(1)} days
+
+FINANCIAL BREAKDOWN
+-------------------
+Revenue:
+- Total Project Value: $${calculatedValues.totalCostBySq.toLocaleString()}
+
+Direct Costs:
+- Paint & Materials: $${calculatedValues.totalPaintCost.toLocaleString()} (${calculatedValues.actualMaterialPercentage.toFixed(1)}% of project)
+- Subcontract Services: $${calculatedValues.subcontractValue.toLocaleString()}
+- Sales Commission: ${(calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100).toLocaleString()} (${projectData.salesCommissionPercentage}%)
+- Project Manager Commission: ${(calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100).toLocaleString()} (${projectData.pmCommissionPercentage}%)
+
+Total Direct Costs: $${(calculatedValues.totalPaintCost + calculatedValues.subcontractValue + (calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100) + (calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100)).toLocaleString()}
+
+Profitability Analysis:
+- Gross Profit: $${calculatedValues.grossProfit.toLocaleString()}
+- Actual Margin: ${calculatedValues.actualMarginPercentage.toFixed(1)}%
+- Target Margin: ${projectData.targetMarginPercentage}%
+- Margin Status: ${calculatedValues.actualMarginPercentage >= projectData.targetMarginPercentage ? '✅ TARGET MET' : '⚠️ BELOW TARGET'}
+
+MATERIAL BUDGET ANALYSIS
+------------------------
+Paint Budget Allocation: ${projectData.paintBudgetPercentage}%
+Budgeted Amount: $${(calculatedValues.totalCostBySq * projectData.paintBudgetPercentage / 100).toLocaleString()}
+Required Paint Cost: $${calculatedValues.totalPaintCost.toLocaleString()}
+Budget Status: ${calculatedValues.totalPaintCost <= (calculatedValues.totalCostBySq * projectData.paintBudgetPercentage / 100) ? '✅ WITHIN BUDGET' : '❌ OVER BUDGET'}
+
+COMMISSIONS & ADMINISTRATIVE EXPENSES
+-------------------------------------
+Sales Commission: ${projectData.salesCommissionPercentage}% ($${(calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100).toLocaleString()})
+Project Manager Commission: ${projectData.pmCommissionPercentage}% ($${(calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100).toLocaleString()})
+Total Commissions: ${(projectData.salesCommissionPercentage + projectData.pmCommissionPercentage).toFixed(1)}% ($${((calculatedValues.totalCostBySq * projectData.salesCommissionPercentage / 100) + (calculatedValues.totalCostBySq * projectData.pmCommissionPercentage / 100)).toLocaleString()})
+
+PROJECT TIMELINE
+----------------
+Primary Work Duration: ${calculatedValues.workDaysToComplete.toFixed(1)} days
+Subcontract Work Duration: ${calculatedValues.subcontractDays.toFixed(1)} days
+Estimated Project Completion: ${Math.max(calculatedValues.workDaysToComplete, calculatedValues.subcontractDays).toFixed(1)} days
+
+QUALITY ASSURANCE
+-----------------
+This project will be completed following industry best practices with:
+- Proper surface preparation
+- High-quality paint application
+- ${projectData.numberOfCoats} coat${projectData.numberOfCoats > 1 ? 's' : ''} for optimal coverage
+- Professional cleanup and protection
+- Final inspection and client approval
+
+TERMS & CONDITIONS
+------------------
+- 50% deposit required to begin work
+- 50% final payment upon completion
+- Work guarantee: 2 years on labor, manufacturer warranty on materials
+- Project start date: [To be determined]
+- Project completion date: [To be determined]
     `.trim();
 
     return workOrder;
@@ -181,6 +229,10 @@ Subcontract Information:
       <div className="d-flex justify-content-between align-items-center mb-5">
         <h1 className="display-5 fw-bold text-dark mb-0">Painting Calculator</h1>
         <div className="d-flex gap-2">
+          <Link href="/admin" className="btn btn-warning d-flex align-items-center gap-2">
+            <FileText style={{ width: '1.25rem', height: '1.25rem' }} />
+            <span>Projects</span>
+          </Link>
           <Link href="/settings" className="btn btn-outline-secondary d-flex align-items-center gap-2">
             <SettingsIcon style={{ width: '1.25rem', height: '1.25rem' }} />
             <span>Settings</span>

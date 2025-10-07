@@ -167,15 +167,15 @@ export default async function AdminPage() {
           <div className="col-md-6">
             <div className="card h-100">
               <div className="card-header">
-                <h5 className="mb-0">🔧 System Settings</h5>
+                <h5 className="mb-0">📋 Project Management</h5>
               </div>
               <div className="card-body">
                 <p className="text-muted mb-3">
-                  Configure system-wide settings, backups, and maintenance options.
+                  Manage all painting projects, client work orders, and project tracking.
                 </p>
-                <button className="btn btn-outline-primary" disabled>
-                  Coming Soon
-                </button>
+                <Link href="/admin/projects" className="btn btn-primary">
+                  Manage Projects
+                </Link>
               </div>
             </div>
           </div>
